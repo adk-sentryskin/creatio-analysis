@@ -6,6 +6,7 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import requests
 import json
 import io
@@ -811,7 +812,7 @@ def main():
         st.rerun()
     
     st.sidebar.markdown("---")
-    st.sidebar.markdown("**Last Updated:** " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    st.sidebar.markdown("**Last Updated (EST):** " + datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S"))
     
     # Data loading
     with st.spinner("🔄 Fetching latest data from Creatio..."):
