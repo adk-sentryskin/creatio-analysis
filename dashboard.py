@@ -802,6 +802,12 @@ def main():
     # Refresh button
     if st.sidebar.button("🔄 Refresh Data", type="primary"):
         st.cache_data.clear()
+        # Also refresh the pre-generated BigQuery export
+        try:
+            if os.path.exists("chat_bigquery_export.csv"):
+                os.remove("chat_bigquery_export.csv")
+        except Exception:
+            pass
         st.rerun()
     
     st.sidebar.markdown("---")
