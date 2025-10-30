@@ -14,6 +14,8 @@ import os
 from google.cloud import bigquery
 from google.oauth2 import service_account
 import threading
+import queue
+import streamlit.components.v1 as components
 
 # ==============================
 # 🔐 CONFIGURATION
@@ -82,15 +84,21 @@ CHAT_EXPORT_SQL = (
     """
     -- Replace project.dataset.table and fields with your schema
     SELECT
-      chat_id,
-      user_id,
-      message,
-      timestamp,
-      metadata
-    FROM `your-project.your_dataset.chat_messages`
-    WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)
-    ORDER BY timestamp DESC
-    LIMIT 10000
+    user_id,
+    STRING_AGG(
+        FORMAT(
+        '[%s]\\n%s: %s',
+        FORMAT_TIMESTAMP('%Y-%m-%d %H:%M:%S', timestamp),
+        role,
+        message
+        ),
+        '\\n\\n'
+        ORDER BY timestamp asc
+    ) AS chat_transcript
+    FROM `christinevalmy.assistant_logs.claude_conversations`
+    WHERE timestamp > TIMESTAMP('2025-10-07 00:00:00')
+    GROUP BY user_id
+    ORDER BY MIN(timestamp);
     """
 ).strip()
 
@@ -723,18 +731,11 @@ def main():
     st.title("📊 Creatio Lead Analysis Dashboard")
     st.markdown("---")
     
-    # Quick action: BigQuery chat export (non-blocking)
-    st.subheader("💬 Download Chat Data (BigQuery)")
+    # Chat Export (BigQuery): run once (if missing) and store CSV, then offer simple download
+    st.subheader("💬 Chat Export (BigQuery)")
+    export_path = "chat_bigquery_export.csv"
 
-    # Initialize session state keys
-    if "bq_export_running" not in st.session_state:
-        st.session_state.bq_export_running = False
-    if "bq_export_error" not in st.session_state:
-        st.session_state.bq_export_error = None
-    if "bq_export_csv" not in st.session_state:
-        st.session_state.bq_export_csv = None
-
-    # Prepare credentials
+    # Build BigQuery client from secrets
     creds_info = None
     project_id = None
     try:
@@ -750,53 +751,38 @@ def main():
         creds_info = None
         project_id = None
 
-    def _run_bq_export():
-        try:
-            st.session_state.bq_export_error = None
-            credentials = service_account.Credentials.from_service_account_info(dict(creds_info))
-            client = bigquery.Client(credentials=credentials, project=project_id or credentials.project_id)
-            job = client.query(CHAT_EXPORT_SQL)
-            result_df = job.to_dataframe(create_bqstorage_client=True)
-            if result_df.empty:
-                st.session_state.bq_export_csv = b""
-            else:
-                st.session_state.bq_export_csv = result_df.to_csv(index=False).encode("utf-8")
-        except Exception as e:
-            st.session_state.bq_export_error = str(e)
-            st.session_state.bq_export_csv = None
-        finally:
-            st.session_state.bq_export_running = False
-
-    col_a, col_b = st.columns([1, 3])
-    with col_a:
-        start_clicked = st.button("▶️ Start Export", key="bq_start", type="primary", disabled=st.session_state.bq_export_running or not bool(creds_info))
-    with col_b:
+    # Generate CSV once if it does not exist
+    if not os.path.exists(export_path):
         if not creds_info:
-            st.warning("Set GCP service account in secrets to enable export.")
-
-    if start_clicked and not st.session_state.bq_export_running:
-        st.session_state.bq_export_running = True
-        st.session_state.bq_export_csv = None
-        st.session_state.bq_export_error = None
-        threading.Thread(target=_run_bq_export, daemon=True).start()
-
-    # Status + download
-    if st.session_state.bq_export_running:
-        st.info("Export running in background. You can continue using the dashboard.")
-    elif st.session_state.bq_export_error:
-        st.error(f"BigQuery error: {st.session_state.bq_export_error}")
-    elif st.session_state.bq_export_csv is not None:
-        if len(st.session_state.bq_export_csv) == 0:
-            st.warning("Query returned no rows.")
+            st.warning("Set GCP service account in secrets to prepare the export.")
         else:
-            st.success("Export ready.")
-            st.download_button(
-                label="📥 Download CSV",
-                data=st.session_state.bq_export_csv,
-                file_name=f"chat_bigquery_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv",
-                key="bq_download_file_ready"
-            )
+            try:
+                with st.spinner("Preparing chat export from BigQuery…"):
+                    credentials = service_account.Credentials.from_service_account_info(dict(creds_info))
+                    client = bigquery.Client(credentials=credentials, project=project_id or credentials.project_id)
+                    print("\n[BigQuery Export] Preparing initial CSV...")
+                    print("[BigQuery Export] SQL:\n" + CHAT_EXPORT_SQL)
+                    df_export = client.query(CHAT_EXPORT_SQL).to_dataframe(create_bqstorage_client=True)
+                    df_export.to_csv(export_path, index=False)
+                    print(f"[BigQuery Export] Wrote {len(df_export)} rows to {export_path}")
+                    st.success("Chat export prepared.")
+            except Exception as e:
+                st.error(f"Failed to prepare chat export: {e}")
+
+    # Simple download from stored CSV (like filtered CSV)
+    if os.path.exists(export_path):
+        try:
+            with open(export_path, "rb") as f:
+                st.download_button(
+                    label="📥 Download Chat Export CSV",
+                    data=f.read(),
+                    file_name=f"chat_bigquery_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv"
+                )
+        except Exception as e:
+            st.warning(f"Could not read export file: {e}")
+    else:
+        st.info("Export file not ready yet.")
     
     # Sidebar
     st.sidebar.title("🔄 Data Controls")
