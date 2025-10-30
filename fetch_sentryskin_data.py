@@ -9,9 +9,13 @@ import json
 import pandas as pd
 from datetime import datetime, timezone
 import os
+import streamlit as st
 
 # Configuration
-API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhNDEyOWNhNC0zYmUxLTQ1ZDctYmEwNC0wMWVlNzRlNTcyMWMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzYxNjc1NjQ0LCJleHAiOjE3NjQyMTk2MDB9.yJQQGhRG8okOc3pISQ2lBfCIcfZLh4Q9QqTxi29MEtE"  # Replace with your actual API key
+try:
+    API_KEY = st.secrets["SENTRYSKIN_API_KEY"]
+except:
+    API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhNDEyOWNhNC0zYmUxLTQ1ZDctYmEwNC0wMWVlNzRlNTcyMWMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzYxNjc1NjQ0LCJleHAiOjE3NjQyMTk2MDB9.yJQQGhRG8okOc3pISQ2lBfCIcfZLh4Q9QqTxi29MEtE"  # Replace with your actual API key
 BASE_URL = "https://sentryskin.app.n8n.cloud/api/v1/executions"
 WORKFLOW_ID = "V7n2R2x0bj99pQhK"
 START_DATE = "2024-10-07T00:00:00Z"  # October 7th start date

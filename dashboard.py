@@ -16,8 +16,15 @@ import base64
 # ==============================
 TOKEN_URL = "https://christinevalmy-is.creatio.com/connect/token"
 ODATA_URL = "https://christinevalmy.creatio.com/0/odata/Lead"
-CLIENT_ID = "4D8E6F5A8AC8F7BB66EA1A3DC60AE5BC"
-CLIENT_SECRET = "86F4E90DA7949169E5E81E3D743E49F08B088BBD5E76709EAAB17FBE42814201"
+
+# Use Streamlit secrets for production, fallback to hardcoded values for local dev
+try:
+    CLIENT_ID = st.secrets["CREATIO_CLIENT_ID"]
+    CLIENT_SECRET = st.secrets["CREATIO_CLIENT_SECRET"]
+except:
+    CLIENT_ID = "4D8E6F5A8AC8F7BB66EA1A3DC60AE5BC"
+    CLIENT_SECRET = "86F4E90DA7949169E5E81E3D743E49F08B088BBD5E76709EAAB17FBE42814201"
+
 REGISTER_METHOD_GUID = "7928af33-a08e-443f-b949-4ba4ab251617"
 
 # Mappings
