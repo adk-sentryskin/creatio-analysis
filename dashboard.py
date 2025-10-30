@@ -726,7 +726,19 @@ def main():
         layout="wide",
         initial_sidebar_state="expanded"
     )
-    
+    st.markdown("""
+    <style>
+    /* hide Streamlit chrome */
+    #MainMenu {visibility: hidden;}          /* hamburger menu */
+    footer {visibility: hidden;}             /* “Made with Streamlit” */
+    header {visibility: hidden;}             /* top header strip */
+    [data-testid="stToolbar"] {display:none;}/* three-dots toolbar */
+    /* extra safety for any header buttons */
+    .stAppHeader, .stDeployButton {display:none;}
+    [data-testid="stBaseButton-headerNoPadding"] {display:none;}
+    </style>
+    """, unsafe_allow_html=True)
+
     # Header
     st.title("📊 Creatio Lead Analysis Dashboard")
     st.markdown("---")
