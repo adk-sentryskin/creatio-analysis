@@ -85,21 +85,24 @@ CHAT_EXPORT_SQL = (
     """
     -- Replace project.dataset.table and fields with your schema
     SELECT
-    user_id,
-    STRING_AGG(
+      DATE(MIN(timestamp)) AS chat_date,
+      MIN(timestamp) AS start_timestamp,
+      MAX(timestamp) AS end_timestamp,
+      user_id,
+      STRING_AGG(
         FORMAT(
-        '[%s]\\n%s: %s',
-        FORMAT_TIMESTAMP('%Y-%m-%d %H:%M:%S', timestamp),
-        role,
-        message
+          '[%s]\\n%s: %s',
+          FORMAT_TIMESTAMP('%Y-%m-%d %H:%M:%S', timestamp),
+          role,
+          message
         ),
         '\\n\\n'
-        ORDER BY timestamp asc
-    ) AS chat_transcript
+        ORDER BY timestamp ASC
+      ) AS chat_transcript
     FROM `christinevalmy.assistant_logs.claude_conversations`
     WHERE timestamp > TIMESTAMP('2025-10-07 00:00:00')
     GROUP BY user_id
-    ORDER BY MIN(timestamp);
+    ORDER BY MIN(timestamp)
     """
 ).strip()
 
